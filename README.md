@@ -3,6 +3,4 @@
 # 솔데스크 - Ansible 자동화 클라우드 환경 DevOps
 솔데스크 Ansible 자동화 클라우드 환경 DevOps 과정의 수업자료 레포지터리입니다.
 ## License
-Provided under the terms of the CC BY-NC 4.0 License.
-
 Copyright © 2023, NETID
