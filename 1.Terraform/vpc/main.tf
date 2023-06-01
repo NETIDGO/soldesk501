@@ -1,127 +1,96 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 4.0"
+    }
+  }
+}
+
 provider "aws" {
   region = "ap-northeast-2"
 }
 
-variable "vpc_name" {
+variable "test_vpc" {
   description = "VPC Name"
-  type        = string
   default     = "default"
 }
 
 locals {
   common_tags = {
-    Project = "Network"
-    Owner   = "posquit0"
-  }
-}
-
-output "vpc_name" {
-  value = module.vpc.name
-}
-
-output "vpc_id" {
-  value = module.vpc.id
-}
-
-output "vpc_cidr" {
-  value = module.vpc.cidr_block
-}
-
-output "subnet_groups" {
-  value = {
-    public  = module.subnet_group__public
-    private = module.subnet_group__private
+    Service = "network"
+    Owner   = "netid"
   }
 }
 
 module "vpc" {
-  source  = "tedilabs/network/aws//modules/vpc"
-  version = "0.24.0"
-
-  name                  = var.vpc_name
-  cidr_block            = "10.0.0.0/16"
-
+  source                   = "tedilabs/network/aws//modules/vpc"
+  version                  = "0.24.0"
+  name                     = var.test_vpc
+  cidr_block               = "10.0.0.0/16"
   internet_gateway_enabled = true
-
-  dns_hostnames_enabled = true
-  dns_support_enabled   = true
-
-  tags = local.common_tags
+  dns_hostnames_enabled    = true
+  dns_support_enabled      = true
+  tags                     = local.common_tags
 }
 
-module "subnet_group__public" {
+module "test_pub_sn" {
   source  = "tedilabs/network/aws//modules/subnet-group"
   version = "0.24.0"
-
-  name                    = "${module.vpc.name}-public"
-  vpc_id                  = module.vpc.id
-  map_public_ip_on_launch = true
-
+  name    = "${module.vpc.name}_pub_sn"
   subnets = {
-    "${module.vpc.name}-public-001/az1" = {
-      cidr_block           = "10.0.0.0/24"
-      availability_zone_id = "apne2-az1"
-    }
-    "${module.vpc.name}-public-002/az2" = {
+    "${module.vpc.name}_pub_sn1" = {
       cidr_block           = "10.0.1.0/24"
-      availability_zone_id = "apne2-az2"
-    }
-  }
-
-  tags = local.common_tags
-}
-
-module "subnet_group__private" {
-  source  = "tedilabs/network/aws//modules/subnet-group"
-  version = "0.24.0"
-
-  name                    = "${module.vpc.name}-private"
-  vpc_id                  = module.vpc.id
-  map_public_ip_on_launch = false
-
-  subnets = {
-    "${module.vpc.name}-private-001/az1" = {
-      cidr_block           = "10.0.10.0/24"
       availability_zone_id = "apne2-az1"
     }
-    "${module.vpc.name}-private-002/az2" = {
-      cidr_block           = "10.0.11.0/24"
-      availability_zone_id = "apne2-az2"
+    "${module.vpc.name}_pub_sn2" = {
+      cidr_block           = "10.0.2.0/24"
+      availability_zone_id = "apne2-az3"
     }
   }
-
-  tags = local.common_tags
+  tags   = local.common_tags
+  vpc_id = module.vpc.id
 }
 
-module "route_table__public" {
+module "test_pri_sn" {
+  source  = "tedilabs/network/aws//modules/subnet-group"
+  version = "0.24.0"
+  name    = "${module.vpc.name}_pri_sn"
+  subnets = {
+    "${module.vpc.name}_pri_sn1" = {
+      cidr_block           = "10.0.3.0/24"
+      availability_zone_id = "apne2-az1"
+    }
+    "${module.vpc.name}_pri_sn2" = {
+      cidr_block           = "10.0.4.0/24"
+      availability_zone_id = "apne2-az3"
+    }
+  }
+  tags   = local.common_tags
+  vpc_id = module.vpc.id
+}
+
+module "test_pub_rt" {
   source  = "tedilabs/network/aws//modules/route-table"
   version = "0.24.0"
-
-  name   = "${module.vpc.name}-public"
-  vpc_id = module.vpc.id
-
-  subnets = module.subnet_group__public.ids
-
+  name    = "${module.vpc.name}_pub_rt"
+  vpc_id  = module.vpc.id
+  subnets = module.test_pub_sn.ids
   ipv4_routes = [
     {
       cidr_block = "0.0.0.0/0"
       gateway_id = module.vpc.internet_gateway_id
     },
   ]
-
   tags = local.common_tags
 }
 
-module "route_table__private" {
-  source  = "tedilabs/network/aws//modules/route-table"
-  version = "0.24.0"
-
-  name   = "${module.vpc.name}-private"
-  vpc_id = module.vpc.id
-
-  subnets = module.subnet_group__private.ids
-
+module "test_pri_rt" {
+  source      = "tedilabs/network/aws//modules/route-table"
+  version     = "0.24.0"
+  name        = "${module.vpc.name}_pri_rt"
+  vpc_id      = module.vpc.id
+  subnets     = module.test_pri_sn.ids
   ipv4_routes = []
-
-  tags = local.common_tags
+  tags        = local.common_tags
 }
